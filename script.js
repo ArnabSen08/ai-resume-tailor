@@ -7,6 +7,8 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 const resumeTextarea = document.getElementById('resume');
 const jobDescTextarea = document.getElementById('jobDesc');
 const jobUrlInput = document.getElementById('jobUrl');
+const resumeFileInput = document.getElementById('resumeFile');
+const fileNameSpan = document.getElementById('fileName');
 const loadingDiv = document.getElementById('loading');
 const resultSection = document.getElementById('resultSection');
 const errorSection = document.getElementById('errorSection');
@@ -83,6 +85,74 @@ async function makeAPIRequest(endpoint, data = null, method = 'GET') {
     }
 }
 
+// File Upload Functions
+async function uploadResumeFile() {
+    const file = resumeFileInput.files[0];
+    
+    if (!file) {
+        showError('Please select a file first.');
+        return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['.pdf', '.docx', '.doc', '.txt'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedTypes.includes(fileExtension)) {
+        showError(`Unsupported file type. Allowed types: ${allowedTypes.join(', ')}`);
+        return;
+    }
+    
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+        showError('File size too large. Maximum 10MB allowed.');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/upload-resume`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+            throw new Error(errorData.detail || `HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Populate the textarea with extracted text
+        resumeTextarea.value = result.extracted_text;
+        
+        // Show success message
+        fileNameSpan.textContent = `✅ ${file.name} (${result.file_type.toUpperCase()})`;
+        fileNameSpan.style.color = '#27ae60';
+        
+        hideLoading();
+        
+        // Auto-resize textarea
+        autoResize(resumeTextarea);
+        
+        // Show success notification
+        const successMsg = document.createElement('div');
+        successMsg.style.cssText = 'background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #c3e6cb;';
+        successMsg.textContent = result.message;
+        resumeFileInput.parentNode.appendChild(successMsg);
+        
+        setTimeout(() => successMsg.remove(), 3000);
+        
+    } catch (error) {
+        showError(`Failed to upload file: ${error.message}`);
+        fileNameSpan.textContent = '';
+    }
+}
+
 // Main Functions
 async function scrapeJobDescription() {
     const jobUrl = jobUrlInput.value.trim();
@@ -154,6 +224,8 @@ function clearAll() {
     resumeTextarea.value = '';
     jobDescTextarea.value = '';
     jobUrlInput.value = '';
+    resumeFileInput.value = '';
+    fileNameSpan.textContent = '';
     resultSection.style.display = 'none';
     errorSection.style.display = 'none';
     hideLoading();
@@ -234,6 +306,9 @@ function autoResize(textarea) {
 // Add event listeners for auto-resize
 resumeTextarea.addEventListener('input', () => autoResize(resumeTextarea));
 jobDescTextarea.addEventListener('input', () => autoResize(jobDescTextarea));
+
+// Add file upload event listener
+resumeFileInput.addEventListener('change', uploadResumeFile);
 
 // Add Enter key support for job URL
 jobUrlInput.addEventListener('keypress', (e) => {

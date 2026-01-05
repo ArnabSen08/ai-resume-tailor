@@ -5,6 +5,7 @@ An intelligent resume optimization tool that uses AI to tailor your resume for s
 ## 🌟 Features
 
 - **AI-Powered Optimization**: Uses Mistral/Gemma models via Ollama for intelligent resume tailoring
+- **File Upload Support**: Upload PDF, DOCX, or TXT resume files for automatic text extraction
 - **Web Scraping**: Automatically extract job descriptions from job posting URLs
 - **ATS Optimization**: Ensures your resume passes Applicant Tracking Systems
 - **PDF Export**: Download your tailored resume as a PDF
@@ -98,7 +99,7 @@ python -m http.server 3000
 
 ## 🎯 How It Works
 
-1. **Input**: Paste your resume and job description (or job URL)
+1. **Input**: Upload your resume file (PDF/DOCX/TXT) or paste text, and provide job description (or job URL)
 2. **AI Analysis**: The system extracts key requirements from the job posting
 3. **Optimization**: AI rewrites your resume to match job requirements while maintaining accuracy
 4. **Output**: Get an ATS-optimized resume with highlighted key skills and optimization notes
@@ -107,6 +108,7 @@ python -m http.server 3000
 
 - `GET /` - Health check
 - `GET /health` - Backend status
+- `POST /upload-resume` - Upload and extract text from resume files (PDF, DOCX, TXT)
 - `POST /tailor-resume` - Main resume optimization endpoint
 - `POST /scrape-job` - Extract job description from URL
 

@@ -56,6 +56,33 @@ def test_health_check():
         print("   Make sure to run: python app.py")
         return False
 
+def test_file_upload():
+    """Test file upload functionality with a sample text file"""
+    try:
+        # Create a sample resume file
+        sample_resume_content = SAMPLE_RESUME.encode('utf-8')
+        
+        print("🔄 Testing file upload...")
+        
+        files = {'file': ('sample_resume.txt', sample_resume_content, 'text/plain')}
+        response = requests.post(f"{BASE_URL}/upload-resume", files=files, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            print("✅ File upload successful!")
+            print(f"   File type: {result.get('file_type', 'N/A')}")
+            print(f"   Extracted text length: {len(result.get('extracted_text', ''))}")
+            print(f"   Message: {result.get('message', 'N/A')}")
+            return True
+        else:
+            print(f"❌ File upload failed: {response.status_code}")
+            print(f"   Error: {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ File upload request failed: {e}")
+        return False
+
 def test_resume_tailoring():
     """Test the main resume tailoring functionality"""
     try:
@@ -115,7 +142,13 @@ def main():
     
     print()
     
-    # Test 2: Resume Tailoring
+    # Test 2: File Upload
+    if not test_file_upload():
+        print("\n⚠️  File upload failed, but this is optional functionality.")
+    
+    print()
+    
+    # Test 3: Resume Tailoring
     if not test_resume_tailoring():
         print("\n❌ Resume tailoring failed. Check your Ollama setup.")
         print("   Make sure Ollama is running and the model is available:")
@@ -125,7 +158,7 @@ def main():
     
     print()
     
-    # Test 3: Job Scraping (optional)
+    # Test 4: Job Scraping (optional)
     test_job_scraping()
     
     print()

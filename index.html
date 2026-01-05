@@ -85,6 +85,45 @@
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
 
+        .file-upload-section {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-name {
+            color: #27ae60;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .upload-or-divider {
+            text-align: center;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .upload-or-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+            z-index: 1;
+        }
+
+        .upload-or-divider span {
+            background: white;
+            padding: 0 15px;
+            color: #7f8c8d;
+            font-size: 14px;
+            position: relative;
+            z-index: 2;
+        }
+
         .url-input {
             margin-bottom: 20px;
         }
@@ -269,6 +308,16 @@
             <div class="input-section">
                 <div class="input-group">
                     <label for="resume">Your Current Resume:</label>
+                    <div class="file-upload-section">
+                        <input type="file" id="resumeFile" accept=".pdf,.docx,.doc,.txt" style="display: none;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('resumeFile').click()">
+                            📄 Upload Resume File
+                        </button>
+                        <span id="fileName" class="file-name"></span>
+                    </div>
+                    <div class="upload-or-divider">
+                        <span>OR</span>
+                    </div>
                     <textarea id="resume" placeholder="Paste your current resume here..."></textarea>
                 </div>
                 
