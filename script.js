@@ -1,5 +1,7 @@
-// Configuration
-const API_BASE_URL = 'http://localhost:8000'; // Change this to your deployed backend URL
+// Configuration - Auto-detect environment
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:8000' 
+    : 'https://your-backend-url.onrender.com'; // Replace with your actual Render URL
 
 // DOM Elements
 const resumeTextarea = document.getElementById('resume');
