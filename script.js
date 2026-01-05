@@ -1,7 +1,7 @@
 // Configuration - Auto-detect environment
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? 'http://localhost:8000' 
-    : 'https://your-backend-url.onrender.com'; // Replace with your actual Render URL
+    : 'https://ai-resume-tailor-backend.onrender.com'; // This will be your deployed backend
 
 // DOM Elements
 const resumeTextarea = document.getElementById('resume');
