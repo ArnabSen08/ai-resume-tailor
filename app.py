@@ -1,15 +1,11 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
 import requests
 import json
-from typing import Optional
+from typing import Optional, List
 import logging
-import io
-import PyPDF2
-import docx
-from pathlib import Path
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,94 +27,21 @@ class ResumeRequest(BaseModel):
     job_desc: str
     job_url: Optional[str] = None
 
-class FileUploadResponse(BaseModel):
-    extracted_text: str
-    file_type: str
-    success: bool
-    message: str
-
 class ResumeResponse(BaseModel):
     tailored_resume: str
     key_skills_extracted: List[str]
     optimization_notes: str
 
-# Ollama API configuration
-OLLAMA_BASE_URL = "http://localhost:11434"  # Default Ollama URL
-MODEL_NAME = "mistral"  # You can change this to gemma or other models
-
-def extract_text_from_pdf(file_content: bytes) -> str:
-    """
-    Extract text from PDF using PyPDF2
-    """
-    text = ""
-    
-    try:
-        # Using PyPDF2 for PDF extraction
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-                
-        if not text.strip():
-            raise HTTPException(status_code=400, detail="No text could be extracted from PDF")
-                
-        return text.strip()
-        
-    except Exception as e:
-        logger.error(f"PDF extraction failed: {str(e)}")
-        raise HTTPException(status_code=400, detail="Could not extract text from PDF")
-
-def extract_text_from_docx(file_content: bytes) -> str:
-    """
-    Extract text from DOCX files
-    """
-    try:
-        doc = docx.Document(io.BytesIO(file_content))
-        text = []
-        
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text.append(paragraph.text.strip())
-        
-        # Also extract text from tables
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        text.append(cell.text.strip())
-        
-        return "\n".join(text)
-        
-    except Exception as e:
-        logger.error(f"DOCX extraction failed: {str(e)}")
-        raise HTTPException(status_code=400, detail="Could not extract text from DOCX")
-
-def extract_text_from_file(file: UploadFile) -> str:
-    """
-    Extract text from uploaded file based on file type
-    """
-    file_content = file.file.read()
-    file_extension = Path(file.filename).suffix.lower()
-    
-    if file_extension == '.pdf':
-        return extract_text_from_pdf(file_content)
-    elif file_extension in ['.docx', '.doc']:
-        return extract_text_from_docx(file_content)
-    elif file_extension == '.txt':
-        return file_content.decode('utf-8')
-    else:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Unsupported file type: {file_extension}. Supported types: PDF, DOCX, TXT"
-        )
+# Configuration - Use environment variables for production
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+MODEL_NAME = os.getenv("MODEL_NAME", "mistral")
+USE_DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 
 def extract_job_description_from_url(url: str) -> str:
     """
     Extract job description from URL using web scraping
     """
     try:
-        import requests
         from bs4 import BeautifulSoup
         
         headers = {
@@ -191,6 +114,50 @@ def call_ollama_api(prompt: str) -> str:
         logger.error(f"Ollama API request failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to connect to Ollama: {str(e)}")
 
+def mock_ai_optimization(resume: str, job_desc: str) -> dict:
+    """
+    Mock AI optimization for demo purposes
+    """
+    # Extract some keywords from job description
+    job_words = job_desc.lower().split()
+    skills = []
+    
+    # Common tech skills to look for
+    tech_skills = ['python', 'javascript', 'react', 'fastapi', 'sql', 'aws', 'docker', 'kubernetes', 'machine learning', 'ai', 'data', 'analytics', 'node.js', 'typescript', 'mongodb', 'postgresql', 'git', 'agile', 'scrum']
+    
+    for skill in tech_skills:
+        if skill in job_desc.lower():
+            skills.append(skill.title())
+    
+    if not skills:
+        skills = ["Communication", "Problem Solving", "Team Collaboration"]
+    
+    # Create a more sophisticated optimized version
+    lines = resume.strip().split('\n')
+    optimized_lines = []
+    
+    for line in lines:
+        if 'software engineer' in line.lower():
+            optimized_lines.append(line.replace('Software Engineer', 'Senior Software Engineer'))
+        elif 'developer' in line.lower():
+            optimized_lines.append(line + f" with expertise in {', '.join(skills[:3])}")
+        elif line.strip().startswith('•') or line.strip().startswith('-'):
+            # Enhance bullet points with relevant keywords
+            if any(skill.lower() in line.lower() for skill in skills):
+                optimized_lines.append(line + f" (aligned with {skills[0]} requirements)")
+            else:
+                optimized_lines.append(line)
+        else:
+            optimized_lines.append(line)
+    
+    optimized_resume = '\n'.join(optimized_lines)
+    
+    return {
+        "tailored_resume": optimized_resume,
+        "key_skills_extracted": skills[:8],
+        "optimization_notes": f"Resume optimized to highlight {len(skills)} key skills from the job description. Enhanced job titles, added relevant keywords, and improved bullet points for better ATS compatibility. This demo version provides realistic optimization without requiring AI infrastructure."
+    }
+
 def create_resume_optimization_prompt(resume: str, job_desc: str) -> str:
     """
     Create a comprehensive prompt for resume optimization
@@ -228,54 +195,17 @@ def create_resume_optimization_prompt(resume: str, job_desc: str) -> str:
 
 **IMPORTANT:** Only enhance and optimize existing content. Do not fabricate experience or skills the candidate doesn't possess."""
 
-@app.post("/upload-resume", response_model=FileUploadResponse)
-async def upload_resume(file: UploadFile = File(...)):
-    """
-    Upload and extract text from resume file (PDF, DOCX, TXT)
-    """
-    try:
-        # Validate file size (max 10MB)
-        if file.size and file.size > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="File size too large. Maximum 10MB allowed.")
-        
-        # Validate file type
-        allowed_types = ['.pdf', '.docx', '.doc', '.txt']
-        file_extension = Path(file.filename).suffix.lower()
-        
-        if file_extension not in allowed_types:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Unsupported file type. Allowed types: {', '.join(allowed_types)}"
-            )
-        
-        # Extract text from file
-        extracted_text = extract_text_from_file(file)
-        
-        if not extracted_text.strip():
-            raise HTTPException(status_code=400, detail="No text could be extracted from the file")
-        
-        logger.info(f"Successfully extracted {len(extracted_text)} characters from {file.filename}")
-        
-        return FileUploadResponse(
-            extracted_text=extracted_text,
-            file_type=file_extension,
-            success=True,
-            message=f"Successfully extracted text from {file.filename}"
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"File upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-
 @app.get("/")
 async def root():
-    return {"message": "AI Resume Tailor API is running!"}
+    mode = "Demo Mode (No AI Required)" if USE_DEMO_MODE else "AI Mode (Ollama Required)"
+    return {"message": f"AI Resume Tailor API is running! - {mode}"}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "model": MODEL_NAME}
+    if USE_DEMO_MODE:
+        return {"status": "healthy", "model": "demo-mode", "note": "Using mock AI for demonstration"}
+    else:
+        return {"status": "healthy", "model": MODEL_NAME, "ollama_url": OLLAMA_BASE_URL}
 
 @app.post("/tailor-resume", response_model=ResumeResponse)
 async def tailor_resume(request: ResumeRequest):
@@ -295,24 +225,28 @@ async def tailor_resume(request: ResumeRequest):
             except Exception as e:
                 logger.warning(f"Failed to scrape URL, using provided description: {str(e)}")
         
-        # Create the optimization prompt
-        prompt = create_resume_optimization_prompt(request.resume, job_description)
-        
-        # Call Ollama API
-        logger.info("Calling Ollama API for resume optimization...")
-        response = call_ollama_api(prompt)
-        
-        # Try to parse JSON response
-        try:
-            result = json.loads(response)
+        if USE_DEMO_MODE:
+            # Use mock AI optimization
+            logger.info("Using mock AI optimization for demo...")
+            result = mock_ai_optimization(request.resume, job_description)
             return ResumeResponse(**result)
-        except json.JSONDecodeError:
-            # If not JSON, return as plain text with basic parsing
-            return ResumeResponse(
-                tailored_resume=response,
-                key_skills_extracted=["AI/ML", "Python", "Data Analysis"],  # Default
-                optimization_notes="Resume optimized based on job requirements"
-            )
+        else:
+            # Use real Ollama API
+            prompt = create_resume_optimization_prompt(request.resume, job_description)
+            logger.info("Calling Ollama API for resume optimization...")
+            response = call_ollama_api(prompt)
+            
+            # Try to parse JSON response
+            try:
+                result = json.loads(response)
+                return ResumeResponse(**result)
+            except json.JSONDecodeError:
+                # If not JSON, return as plain text with basic parsing
+                return ResumeResponse(
+                    tailored_resume=response,
+                    key_skills_extracted=["AI/ML", "Python", "Data Analysis"],  # Default
+                    optimization_notes="Resume optimized based on job requirements"
+                )
             
     except Exception as e:
         logger.error(f"Error in tailor_resume: {str(e)}")
@@ -331,4 +265,5 @@ async def scrape_job_description(job_url: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
