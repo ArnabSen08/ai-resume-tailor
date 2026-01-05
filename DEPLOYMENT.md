@@ -96,10 +96,11 @@ After deploying your backend, update the frontend:
 3. Try the "Extract Job Description" feature with a job URL
 
 ### Test Full Workflow
-1. Paste a sample resume
-2. Add a job description or job URL
-3. Click "Tailor My Resume"
-4. Verify AI response and PDF download
+1. Visit: https://arnabsen08.github.io/ai-resume-tailor/
+2. **Upload a resume file** (PDF, DOCX, or TXT) OR paste resume text
+3. Add a job description or job URL
+4. Click "Tailor My Resume"
+5. Verify AI response and PDF download
 
 ## 🔍 Troubleshooting
 

@@ -1,0 +1,35 @@
+John Doe
+Senior Software Engineer
+Email: john.doe@email.com | Phone: (555) 123-4567
+
+PROFESSIONAL SUMMARY
+Experienced software engineer with 5+ years in full-stack development, specializing in Python, JavaScript, and cloud technologies. Proven track record of delivering scalable web applications and leading cross-functional teams.
+
+TECHNICAL SKILLS
+• Programming Languages: Python, JavaScript, TypeScript, Java
+• Web Technologies: React, FastAPI, Node.js, HTML5, CSS3
+• Databases: PostgreSQL, MongoDB, Redis
+• Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD
+• Tools: Git, Jira, VS Code, Postman
+
+PROFESSIONAL EXPERIENCE
+
+Senior Software Engineer | Tech Corp | 2021 - Present
+• Developed and maintained 5+ web applications using Python and React
+• Improved application performance by 40% through code optimization
+• Led a team of 3 junior developers and conducted code reviews
+• Implemented CI/CD pipelines reducing deployment time by 60%
+
+Software Engineer | StartupXYZ | 2019 - 2021
+• Built RESTful APIs serving 10,000+ daily active users
+• Collaborated with product team to define technical requirements
+• Integrated third-party services and payment gateways
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of Technology | 2015 - 2019
+
+CERTIFICATIONS
+• AWS Certified Solutions Architect
+• Google Cloud Professional Developer
+• Certified Kubernetes Administrator (CKA)
