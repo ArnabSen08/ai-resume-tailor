@@ -1,15 +1,10 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
 import requests
 import json
-from typing import Optional
+from typing import Optional, List
 import logging
-import io
-import PyPDF2
-import docx
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,12 +26,6 @@ class ResumeRequest(BaseModel):
     job_desc: str
     job_url: Optional[str] = None
 
-class FileUploadResponse(BaseModel):
-    extracted_text: str
-    file_type: str
-    success: bool
-    message: str
-
 class ResumeResponse(BaseModel):
     tailored_resume: str
     key_skills_extracted: List[str]
@@ -46,79 +35,11 @@ class ResumeResponse(BaseModel):
 OLLAMA_BASE_URL = "http://localhost:11434"  # Default Ollama URL
 MODEL_NAME = "mistral"  # You can change this to gemma or other models
 
-def extract_text_from_pdf(file_content: bytes) -> str:
-    """
-    Extract text from PDF using PyPDF2
-    """
-    text = ""
-    
-    try:
-        # Using PyPDF2 for PDF extraction
-        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-                
-        if not text.strip():
-            raise HTTPException(status_code=400, detail="No text could be extracted from PDF")
-                
-        return text.strip()
-        
-    except Exception as e:
-        logger.error(f"PDF extraction failed: {str(e)}")
-        raise HTTPException(status_code=400, detail="Could not extract text from PDF")
-
-def extract_text_from_docx(file_content: bytes) -> str:
-    """
-    Extract text from DOCX files
-    """
-    try:
-        doc = docx.Document(io.BytesIO(file_content))
-        text = []
-        
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text.append(paragraph.text.strip())
-        
-        # Also extract text from tables
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():
-                        text.append(cell.text.strip())
-        
-        return "\n".join(text)
-        
-    except Exception as e:
-        logger.error(f"DOCX extraction failed: {str(e)}")
-        raise HTTPException(status_code=400, detail="Could not extract text from DOCX")
-
-def extract_text_from_file(file: UploadFile) -> str:
-    """
-    Extract text from uploaded file based on file type
-    """
-    file_content = file.file.read()
-    file_extension = Path(file.filename).suffix.lower()
-    
-    if file_extension == '.pdf':
-        return extract_text_from_pdf(file_content)
-    elif file_extension in ['.docx', '.doc']:
-        return extract_text_from_docx(file_content)
-    elif file_extension == '.txt':
-        return file_content.decode('utf-8')
-    else:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Unsupported file type: {file_extension}. Supported types: PDF, DOCX, TXT"
-        )
-
 def extract_job_description_from_url(url: str) -> str:
     """
     Extract job description from URL using web scraping
     """
     try:
-        import requests
         from bs4 import BeautifulSoup
         
         headers = {
@@ -227,47 +148,6 @@ def create_resume_optimization_prompt(resume: str, job_desc: str) -> str:
    }}
 
 **IMPORTANT:** Only enhance and optimize existing content. Do not fabricate experience or skills the candidate doesn't possess."""
-
-@app.post("/upload-resume", response_model=FileUploadResponse)
-async def upload_resume(file: UploadFile = File(...)):
-    """
-    Upload and extract text from resume file (PDF, DOCX, TXT)
-    """
-    try:
-        # Validate file size (max 10MB)
-        if file.size and file.size > 10 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="File size too large. Maximum 10MB allowed.")
-        
-        # Validate file type
-        allowed_types = ['.pdf', '.docx', '.doc', '.txt']
-        file_extension = Path(file.filename).suffix.lower()
-        
-        if file_extension not in allowed_types:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Unsupported file type. Allowed types: {', '.join(allowed_types)}"
-            )
-        
-        # Extract text from file
-        extracted_text = extract_text_from_file(file)
-        
-        if not extracted_text.strip():
-            raise HTTPException(status_code=400, detail="No text could be extracted from the file")
-        
-        logger.info(f"Successfully extracted {len(extracted_text)} characters from {file.filename}")
-        
-        return FileUploadResponse(
-            extracted_text=extracted_text,
-            file_type=file_extension,
-            success=True,
-            message=f"Successfully extracted text from {file.filename}"
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"File upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 @app.get("/")
 async def root():
